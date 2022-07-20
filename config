@@ -2,4 +2,5 @@ ngx_addon_name="ngx_http_whistleblower"
 HTTP_MODULES="$HTTP_MODULES ngx_http_whistleblower_filter_module"
 NGX_ADDON_SRCS="$NGX_ADDON_SRCS \
     $ngx_addon_dir/ngx_http_whistleblower.c \
+    $ngx_addon_dir/search_chunked_strings.c \
     "

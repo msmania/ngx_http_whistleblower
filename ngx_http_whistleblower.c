@@ -11,6 +11,8 @@ char* ngx_http_whistleblower_merge_conf(
     ngx_conf_t* cf, void* parent, void* child);
 
 ngx_int_t ngx_http_whistleblower_init(ngx_conf_t* cf);
+u_int32_t extract_field(
+    ngx_log_t* logger, ngx_chain_t* in, const char* field_name);
 
 ngx_command_t ngx_http_whistleblower_commands[] = {
   { ngx_string("whistle_blow"),
@@ -62,10 +64,12 @@ ngx_int_t ngx_http_whistleblower_filter(
     return ngx_http_next_request_body_filter(r, in);
   }
 
-  ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-      "ngx_http_whistleblower_filter: %p %d",
-      in->buf->pos,
-      in->buf->last - in->buf->pos);
+  u_int32_t chainId = extract_field(r->connection->log, in, "\"blockchain\"");
+  if (chainId) {
+    ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
+        "ngx_http_whistleblower_filter: %04Xd", chainId);
+  }
+
   return ngx_http_next_request_body_filter(r, in);
 }
 
