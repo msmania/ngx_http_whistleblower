@@ -88,11 +88,43 @@ ngx_module_t ngx_http_whistleblower_filter_module = {
 ngx_http_request_body_filter_pt ngx_http_next_request_body_filter;
 
 void ngx_http_whistleblower_task_handler(void* data, ngx_log_t* logger) {
+  ngx_http_whistleblower_main_conf_t* conf =
+    ngx_http_cycle_get_module_main_conf(
+        ngx_cycle, ngx_http_whistleblower_filter_module);
+  if (!conf->Connection) {
+    return;
+  }
+
   ngx_http_whistleblower_ctx_t* ctx = data;
-  ngx_log_error(NGX_LOG_INFO, logger, 0,
+  ngx_log_debug2(NGX_LOG_DEBUG, logger, 0,
       "ngx_http_whistleblower_task_handler: %04Xd %V",
       ctx->ChainId,
       &ctx->RemoteAddr);
+
+  const char *paramValues[] ={
+    (const char*)&ctx->ChainId,
+    (const char*)ctx->RemoteAddr.data,
+  };
+  int paramLengths[] = {sizeof(ctx->ChainId), 0};
+  int paramFormats[] = {1, 0};
+  PGresult* res = PQexecParams(conf->Connection,
+      "INSERT INTO public.relay_senders (chain, ip, relays)"
+      " VALUES ($1::bytea, $2, 1)"
+      " ON CONFLICT (chain, ip)"
+      " DO UPDATE SET relays = relay_senders.relays + 1",
+      2,
+      NULL,
+      paramValues,
+      paramLengths,
+      paramFormats,
+      1);
+  if (PQresultStatus(res) != PGRES_COMMAND_OK)
+  {
+    ngx_log_error(NGX_LOG_ERR, logger, 0,
+        "INSERT failed: %s", PQerrorMessage(conf->Connection));
+  }
+  PQclear(res);
+
   free(ctx->RemoteAddr.data);
   ngx_str_null(&ctx->RemoteAddr);
 }
